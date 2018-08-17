@@ -1,91 +1,113 @@
 #!/usr/bin/python3
 import sys
+from assembler import general as Assembler
+
 
 def displayHelp():
-  print('Correct usage:\n' + sys.argv[0] + ' fileToOpen')
-  exit(0)
+    print('Correct usage:\n' +
+          sys.argv[0] + ' [OPTIONS..]\n\n' +
+          'OPTIONS:\n' +
+          '\t-i fileName     specify the input file\n' +
+          '\t-o fileName     specify the output file\n' +
+          '\t-h, --help      show this help message and exit\n' +
+          '\t--quiet         reduce information messages to miniumum\n' +
+          '\t-v, --verbose   increase the number of debugging info'
+          )
+    exit(0)
+
 
 class ParametersError(Exception):
-  pass
+    pass
+
+
+class processedParameters:
+    def __init__(self):
+        self.inputFile = sys.stdin
+        self.outputFile = sys.stdout
+        self.quiet = False
+        self.verbose = False
+
 
 class InitialParameters:
-     
-  def __init__(self, parameters):
-    # dictionary in format nameOfParameter:typeOfAdditionalParameterRequired
-    self.extendedParameters = {
-      '-i' : self.setInputFile,
-      '-o' : self.setOutputFile
-    }
 
-    self.standaloneParameters = {
-      '--quiet' : self.setQuiet,
-      '-v' : self.setVerbose,
-      '--verbose' : self.setVerbose,
-      '-h' : self.help,
-      '--help' : self.help
-    }
+    def __init__(self, cliParameters):
+        # dictionary in format nameOfParameter:functionToCallWithAdditionalArgument
+        self.extendedParameters = {
+            '-i': self.setInputFile,
+            '-o': self.setOutputFile
+        }
 
-    self.processNameame = parameters[0]
-    self.parameters = {
-      'inputFile' : sys.stdin,
-      'outputFile' : sys.stdout,
-      'help' : False,
-      'quiet' : False,
-      'verbose' : False
-    }
-    
-    self.additionalParameterPending = None
-    for parameter in parameters[1:]:
-      self.processParameter(parameter)
-    if self.additionalParameterPending is not None:
-      raise ParameterException('Expected additional parameter after: ' + additionalParameterPending[0])
+        self.standaloneParameters = {
+            '-h': displayHelp,
+            '--help': displayHelp,
+            '--quiet': self.setQuiet,
+            '-v': self.setVerbose,
+            '--verbose': self.setVerbose
+        }
 
-  def processParameter(self, parameter):
-    if self.additionalParameterPending is not None:
-      self.fillParameter(parameter)
-      return True
-    if parameter not in self.extendedParameters:
-      if parameter not in self.standaloneParameters:
-        raise ParametersError( parameter + ' is not an allowed parameter to the assembler' )
-      else:
-        self.setStandaloneParameter(parameter)
-        return True  
-    self.setupForParameter(parameter)
-    return True
-    
-  def fillParameter(self, parameter):
-    self.additionalParameterPending(parameter)
-    self.additionalParameterPending = None
-    return True
+        self.processName = cliParameters[0]
+        self.parameters = processedParameters()
 
-  def setupForParameter(self, parameter):
-    self.additionalParameterPending = self.extendedParameters[parameter]
+        self.awaitingArgument = None
+        for parameter in cliParameters[1:]:
+            self.processParameter(parameter)
+        # Check if anything still requires any additional arguments
+        if self.awaitingArgument is not None:
+            raise ParametersError(
+                'Expected additional argument after: ' + self.awaitingArgument[0])
 
-  def setStandaloneParameter(self, parameter):
-    if self.standaloneParameters[parameter] is None:
-      raise ParameterException('Parameter ' + parameter + ' not allowed')
-    self.standaloneParameters[parameter]()
-    return True
+    def processParameter(self, parameter):
+        if self.awaitingArgument is not None:
+            self.fillArgument(parameter)
+            return True
+        if parameter not in self.extendedParameters:
+            if parameter not in self.standaloneParameters:
+                raise ParametersError(
+                    parameter + ' is not an allowed parameter to the assembler')
+            else:
+                self.setStandaloneParameter(parameter)
+                return True
+        self.initializeExtendedParameter(parameter)
+        return True
 
-  def setInputFile(self, parameter):
-    self.parameters['inputFile'] = open(parameter, 'r')
-    return True
+    def fillArgument(self, parameter):
+        self.awaitingArgument(parameter)
+        self.awaitingArgument = None
+        return True
 
-  def setOutputFile(self, parameter):
-    self.parameters['outputFile'] = open(parameter, 'w')
-    return True
+    def initializeExtendedParameter(self, parameter):
+        # set the awaitingArgument to a function reprezenting the expected paramter
+        self.awaitingArgument = self.extendedParameters[parameter]
 
-  def setQuiet(self):
-    self.parameters['quiet'] = True
+    def setStandaloneParameter(self, parameter):
+        if parameter not in self.standaloneParameters:
+            raise ParametersError('Unknown parameter: ' + parameter)
+        # call the function being assigned to the parameter in the dictionary
+        self.standaloneParameters[parameter]()
+        return True
 
-  def setVerbose(self):
-    self.parameters['verbose'] = True
+    def setInputFile(self, parameter):
+        self.parameters.inputFile = open(parameter, 'r')
+        return True
 
-  def help(self):
-    self.parameters['help'] = True
+    def setOutputFile(self, parameter):
+        self.parameters.outputFile = open(parameter, 'w')
+        return True
 
-  def printParameters(self):
-    print(self.parameters)
-    
-initialParameters = InitialParameters(sys.argv)
-initialParameters.printParameters()
+    def setQuiet(self):
+        self.parameters.quiet = True
+        return True
+
+    def setVerbose(self):
+        self.parameters.verbose = True
+        return True
+
+
+def main():
+    initialParameters = InitialParameters(sys.argv)
+
+    Assembler.setup(initialParameters.parameters)
+
+
+if __name__ == "__main__":
+    main()

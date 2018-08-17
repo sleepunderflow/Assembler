@@ -1,6 +1,6 @@
 # examples taken from nasm
 # reference https://www.nasm.us/doc/nasmdoc3.html#section-3.2.1
-
+ . . .  . . . .
 db    55                # just the byte 55 
 db    0x55,56, 0x57      # three bytes in succession 
 db    'a',0x55, 'A'            # character constants are OK 
