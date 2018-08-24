@@ -9,6 +9,7 @@ def displayHelp():
           'OPTIONS:\n' +
           '\t-i fileName     specify the input file\n' +
           '\t-o fileName     specify the output file\n' +
+          '\t-e little/big   specify endianess of the output\n' +
           '\t-h, --help      show this help message and exit\n' +
           '\t--quiet         reduce information messages to miniumum\n' +
           '\t-v, --verbose   increase the number of debugging info'
@@ -26,6 +27,7 @@ class processedParameters:
         self.outputFile = sys.stdout
         self.quiet = False
         self.verbose = False
+        self.endianess = 'little'
 
 
 class InitialParameters:
@@ -34,7 +36,8 @@ class InitialParameters:
         # dictionary in format nameOfParameter:functionToCallWithAdditionalArgument
         self.extendedParameters = {
             '-i': self.setInputFile,
-            '-o': self.setOutputFile
+            '-o': self.setOutputFile,
+            '-e': self.setEndianess
         }
 
         self.standaloneParameters = {
@@ -90,8 +93,12 @@ class InitialParameters:
         self.parameters.inputFile = open(parameter, 'r')
         return True
 
+    def setEndianess(self, parameter):
+        self.parameters.endianess = parameter
+        return True
+
     def setOutputFile(self, parameter):
-        self.parameters.outputFile = open(parameter, 'w')
+        self.parameters.outputFile = open(parameter, 'wb')
         return True
 
     def setQuiet(self):
@@ -106,7 +113,9 @@ class InitialParameters:
 def main():
     initialParameters = InitialParameters(sys.argv)
 
-    Assembler.setup(initialParameters.parameters)
+    processor = Assembler.setup(initialParameters.parameters)
+    processor.process()
+    processor.write()
 
 
 if __name__ == "__main__":
