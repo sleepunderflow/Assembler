@@ -3,6 +3,7 @@
 DB    55                # just the byte 55 
 DB    0x55,56, 0x57      # three bytes in succession 
 DB    'a',0x55, 'A'            # character constants are OK 
+.start
 DB    'hello',13,10,'$'   # so are string constants 
 DW    0x1234              # 0x34 0x12 
 DW    'a'                 # 0x61 0x00 (it's just a number) 
