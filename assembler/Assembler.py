@@ -1,6 +1,8 @@
 from enum import Enum
 from collections import namedtuple
 import string
+from assembler.formats._bin import BIN
+from assembler.formats._elf import ELF
 
 
 class AssemblerException(Exception):
@@ -33,6 +35,7 @@ class TYPES(Enum):
     INT = 1
     STRING = 2
     INSTRUCTION = 3
+    LABEL = 4
 
 
 class Token:
@@ -52,6 +55,7 @@ class Token:
             self.checkComma,
             self.checkNumber,
             self.checkString,
+            self.checkLabel,
             self.checkInstruction
         ]
 
@@ -108,6 +112,16 @@ class Token:
 
         return tokenInfo(TYPES.INSTRUCTION, value)
 
+    def checkLabel(self, value):
+        if len(value) < 2:
+            return None
+        if(value[0] is '.'):
+            for character in value[1:]:
+                if character not in string.ascii_letters:
+                    break
+            return tokenInfo(TYPES.LABEL, value)
+        return None
+
 
 class Processor:
     def __init__(self, initialParameters):
@@ -115,6 +129,8 @@ class Processor:
         self.lines = []
         self.tokens = []
         self.dataBuffer = []
+        self.labels = {}
+        self.currentAddress = 0
 
         self.readInputFile()
 
@@ -183,21 +199,39 @@ class Processor:
             position = self.getToken(lineNumber, line, position, lineLength)
 
     def process(self):
+        supportedFormats = {
+            'bin': BIN,
+            'elf': ELF
+        }
+        fileFormat = supportedFormats[self.parameters.fileFormat](
+            self.parameters)
+        fileFormat.generateTemplate()
+
+        self.currentAddress = fileFormat.getOrg()
+
         self.index = 0
         while self.index < len(self.tokens):
             self.assemble()
 
+        # if file doesn't have .start label specified, set starting address to 0
+        try:
+            startingPoint = self.labels['.start']
+        except KeyError:
+            startingPoint = 0
+
+        self.dataBuffer = fileFormat.addFormatData(
+            self.dataBuffer, startingPoint)
+
     def write(self):
         if len(self.dataBuffer) == 0:
             raise AssemblerException('Empty write buffer!, nothing to write')
-        for data in self.dataBuffer:
-            self.parameters.outputFile.write(data)
+        self.parameters.outputFile.write(bytes(self.dataBuffer))
         self.parameters.outputFile.close()
 
     def assemble(self):
         index = self.index
         token = self.tokens[index]
-        if token.type != TYPES.INSTRUCTION:
+        if token.type != TYPES.INSTRUCTION and token.type != TYPES.LABEL:
             raise AssemblerException('Unexpected token of type ' + str(token.type) +
                                      ', value: ' +
                                      str(token.value) + ' in line: ' +
@@ -206,6 +240,11 @@ class Processor:
         self.index += 1
 
         usedArguments = 0
+
+        if token.type == TYPES.LABEL:
+            self.labels[token.value] = self.currentAddress
+            print(token.value, self.currentAddress)
+            return
 
         if token.value == 'DB':
             usedArguments += self.insertValue(1, usedArguments)
@@ -229,15 +268,17 @@ class Processor:
             counter = 0
             for character in argument.value[1:-1]:
                 counter += 1
-                self.dataBuffer.append(
+                self.dataBuffer += bytearray(
                     ord(character).to_bytes(1, byteorder=self.parameters.endianess))
             if counter % length != 0:
-                self.dataBuffer.append(
-                    int(0).to_bytes(length - counter % length, byteorder=self.parameters.endianess))
+                self.dataBuffer += bytearray(int(0).to_bytes(length - counter %
+                                                             length, byteorder=self.parameters.endianess))
+            self.currentAddress += counter + (length - counter) % length
 
         elif argument.type == TYPES.INT:
-            self.dataBuffer.append(argument.value.to_bytes(
+            self.dataBuffer += bytearray(argument.value.to_bytes(
                 length, byteorder=self.parameters.endianess))
+            self.currentAddress += length
 
         else:
             raise AssemblerException('Wrong argument type: ' + str(argument.type) +
