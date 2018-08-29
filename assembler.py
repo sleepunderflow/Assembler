@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import sys
-from assembler import general as Assembler
+from assembler import Assembler
 
 
 def displayHelp():
@@ -11,8 +11,12 @@ def displayHelp():
           '\t-o fileName     specify the output file\n' +
           '\t-e little/big   specify endianess of the output\n' +
           '\t-h, --help      show this help message and exit\n' +
-          '\t--quiet         reduce information messages to miniumum\n' +
-          '\t-v, --verbose   increase the number of debugging info'
+          '\t-v, --verbose   increase the number of debugging info\n' +
+          '\t-f fileType     specify output file type\n' +
+          '\n\n' +
+          'File Types (to be used with -f)\n' +
+          '\tbin             Just compile, no file format\n' +
+          '\telf             Make it an ELF64 executable'
           )
     exit(0)
 
@@ -25,9 +29,9 @@ class processedParameters:
     def __init__(self):
         self.inputFile = sys.stdin
         self.outputFile = sys.stdout
-        self.quiet = False
         self.verbose = False
         self.endianess = 'little'
+        self.fileFormat = 'bin'
 
 
 class InitialParameters:
@@ -37,13 +41,13 @@ class InitialParameters:
         self.extendedParameters = {
             '-i': self.setInputFile,
             '-o': self.setOutputFile,
-            '-e': self.setEndianess
+            '-e': self.setEndianess,
+            '-f': self.setFileFormat
         }
 
         self.standaloneParameters = {
             '-h': displayHelp,
             '--help': displayHelp,
-            '--quiet': self.setQuiet,
             '-v': self.setVerbose,
             '--verbose': self.setVerbose
         }
@@ -101,13 +105,15 @@ class InitialParameters:
         self.parameters.outputFile = open(parameter, 'wb')
         return True
 
-    def setQuiet(self):
-        self.parameters.quiet = True
-        return True
-
     def setVerbose(self):
         self.parameters.verbose = True
         return True
+
+    def setFileFormat(self, parameter):
+        allowedParamters = ['bin', 'elf']
+        if not parameter in allowedParamters:
+            raise ParametersError(parameter + 'is not an accepted file format')
+        self.parameters.fileFormat = parameter
 
 
 def main():
