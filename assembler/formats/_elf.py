@@ -1,25 +1,65 @@
 from assembler.formats._template import fileFormatClass
+from assembler.formats.elfConstants import *
 
+class elfException(Exception):
+    pass
 
 class ELF(fileFormatClass):
     def __init__(self, parameters):
         fileFormatClass.__init__(self, parameters)
         if parameters.verbose:
             print('selected output file format: ELF')
+        self.setupStaticProperties()
+        self.setDefault()
+
+    def raiseConfigError(self, what, value, allowedValues):
+        raise elfException("Incorrect " + what + ": " + str(value) + ". Allowed values: " + str(allowedValues))
+
+    def setupStaticProperties(self):
+        self.e_ident = [0x7f, 0x45, 0x4c, 0x46] # .ELF
+        self.elfVersion = [EV_CURRENT]
+        self.osABI = [ELFOSABI_SYSV]
+        self.osABIVersion = [0x00]
+
+    def setElfClass(self, elfClass):
+        ''' Sets object file class (e_ident[EI_CLASS])
+        '   Possible options:
+        '   - ELF_CLASS32 - 32-bit ##TODO
+        '   - ELF_CLASS64 - 64-bit
+        '''
+        allowedValues = [ELF_CLASS64]
+        if elfClass in allowedValues:
+            self.ei_class = [elfClass]
+        else:
+            self.raiseConfigError("ELF class", elfClass, allowedValues)
+
+    def setEndianess(self, endianess):
+        ''' Sets endianess of the resulting file data structures
+        '   Possible options:
+        '   - ELF_DATA2LSB - little-endian
+        '   - ELF_DATA2MSB - big-endian ##TODO
+        '''
+        allowedValues = [ELF_DATA2LSB]
+        if endianess in allowedValues:
+            self.endianess = [endianess]
+        else:
+            self.raiseConfigError("endianess mode", endianess, allowedValues)
+
+    def setDefault(self):
+        self.setElfClass(ELF_CLASS64)
+        self.setEndianess(ELF_DATA2LSB)
+
 
     def generateTemplate(self):
-        elfHeader = [0x7f, 0x45, 0x4c, 0x46]
-        mode = [0x02]  # 64 bit
+        mode = [ELF_CLASS64]  # 64 bit
         endianess = 0
         if self.parameters.endianess == 'little':
-            endianess = [0x01]
+            self.setEndianess(ELF_DATA2LSB)
         else:
-            endianess = [0x00]  # big-endian
-        elfVersion = [0x01]  # current version
-        osABI = [0x00]  # UNIX - System V
+            self.setEndianess(ELF_DATA2MSB)  # big-endian
 
-        header = elfHeader + mode + endianess + elfVersion + \
-            osABI + [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
+        header = self.e_ident + self.ei_class + self.endianess + self.elfVersion + \
+            self.osABI + self.osABIVersion + [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]
 
         executableType = [0x02, 0x00]  # executable file
         architecture = [0x3e, 0x00]  # AMD x86-64 architecture

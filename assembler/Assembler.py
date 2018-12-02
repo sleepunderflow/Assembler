@@ -225,6 +225,9 @@ class Processor:
     def write(self):
         if len(self.dataBuffer) == 0:
             raise AssemblerException('Empty write buffer!, nothing to write')
+        print("\n\n\n\n")
+        print(self.dataBuffer)
+        print("\n\n\n\n")
         self.parameters.outputFile.write(bytes(self.dataBuffer))
         self.parameters.outputFile.close()
 
