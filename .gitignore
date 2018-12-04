@@ -1,3 +1,10 @@
 *~
 __pycache__
 .vscode
+*.aux
+*.log
+*.fls
+*.gz
+*.fdb_latexmk
+*.out
+*.toc

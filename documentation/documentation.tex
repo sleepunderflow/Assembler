@@ -1,0 +1,41 @@
+\documentclass{article}
+
+\input{preamble}
+
+\begin{document}
+\maketitle
+\tableofcontents
+
+\section{Overview}
+This documentation details the workings and available instructions of the \programname available at \url{https://github.com/0xGREG/Assembler}.
+
+\section{Running \programname}
+
+USAGE:
+\begin{lstlisting}
+  ./assembler.py [OPTIONS..]
+\end{lstlisting}
+
+\noindent
+OPTIONS:
+\begin{lstlisting}
+  -i: fileName specify the input file
+  -o: fileName specify the output file
+  -e: little/big specify endianess of the output
+  -h, --help: show this help message and exit
+  -v, --verbose: increase the number of debugging info
+  -f: generated file type
+\end{lstlisting}
+
+\noindent
+SUPPORTED OUTPUT FILE TYPES:
+\begin{lstlisting}
+  bin - just a plain unmodified file
+  elf - create headers to make it executable (currently just minimum headers with fixed addresses so that it just runs)
+\end{lstlisting}
+
+\section{Documentation}
+\subsection{Special Labels}
+\texttt{.start} - specifies the entry point of the program
+
+\end{document}
