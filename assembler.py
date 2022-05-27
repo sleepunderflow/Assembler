@@ -121,8 +121,10 @@ def main():
 
     processor = Assembler.setup(initialParameters.parameters)
     processor.process()
+    processor.addMiscStructures()
     processor.write()
 
 
 if __name__ == "__main__":
     main()
+

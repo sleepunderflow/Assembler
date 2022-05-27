@@ -39,7 +39,7 @@ class TYPES(Enum):
 
 
 class Token:
-    def __init__(self, value, lineNumber):
+    def __init__(self, value, lineNumber, bypass = False):
         self.setFunctionAssignments()
         info = self.getTokenInfo(value)
         self.type = info.type
@@ -106,11 +106,14 @@ class Token:
         return None
 
     def checkInstruction(self, value):
+        index = 0
         for character in value:
-            if character not in string.ascii_uppercase:
+            if index == 0 and character not in string.ascii_letters or \
+            (index != 0 and character not in (string.digits + string.ascii_letters)):
                 return None
+            index += 1
 
-        return tokenInfo(TYPES.INSTRUCTION, value)
+        return tokenInfo(TYPES.INSTRUCTION, value.upper())
 
     def checkLabel(self, value):
         if len(value) < 2:
@@ -130,11 +133,16 @@ class Processor:
         self.tokens = []
         self.dataBuffer = []
         self.labels = {}
+        self.sections = {}
         self.currentAddress = 0
 
         self.readInputFile()
+    
+    def addMiscStructures(self):
+        self.dataBuffer = self.fileFormat.addMiscStructures(self.sections, self.dataBuffer)
 
     def tokenize(self):
+        self.lines.append('.section .EOF')
         for i in range(len(self.lines)):
             self.parse(i+1, self.lines[i])
 
@@ -157,10 +165,10 @@ class Processor:
             if line[position] == ',':
                 text = ','
                 position += 1
-
             elif line[position] in '"\'':
                 delimiter = line[position]
                 isString = True
+                # it's a string, spaces allowed
                 parametersDelimiters = '\t\n,'
                 text += '"'
                 position += 1
@@ -203,11 +211,11 @@ class Processor:
             'bin': BIN,
             'elf': ELF
         }
-        fileFormat = supportedFormats[self.parameters.fileFormat](
+        self.fileFormat = supportedFormats[self.parameters.fileFormat](
             self.parameters)
-        fileFormat.generateTemplate()
+        self.fileFormat.generateTemplate()
 
-        self.currentAddress = fileFormat.getOrg()
+        self.currentAddress = self.fileFormat.getOrg()
 
         self.index = 0
         while self.index < len(self.tokens):
@@ -219,7 +227,7 @@ class Processor:
         except KeyError:
             startingPoint = 0
 
-        self.dataBuffer = fileFormat.addFormatData(
+        self.dataBuffer = self.fileFormat.addFormatData(
             self.dataBuffer, startingPoint)
 
     def write(self):
@@ -231,22 +239,28 @@ class Processor:
         self.parameters.outputFile.write(bytes(self.dataBuffer))
         self.parameters.outputFile.close()
 
+    def assembleLabel(self, token):
+        if token.value == '.section':
+            argument = self.tokens[self.index]
+            self.sections[argument.value] = self.currentAddress
+            print('New section: {0} on address {1}'.format(argument.value, self.currentAddress))
+            self.index += 1
+            return
+        self.labels[token.value] = self.currentAddress
+        print(token.value, self.currentAddress)
+        return
+
     def assemble(self):
-        index = self.index
-        token = self.tokens[index]
+        token = self.tokens[self.index]
         if token.type != TYPES.INSTRUCTION and token.type != TYPES.LABEL:
-            raise AssemblerException('Unexpected token of type ' + str(token.type) +
-                                     ', value: ' +
-                                     str(token.value) + ' in line: ' +
-                                     str(token.lineNumber))
+            raise AssemblerException('Unexpected token of type {0}, value: {1} in line {2}'.
+                format(token.type, token.value, token.lineNumber))
 
         self.index += 1
-
         usedArguments = 0
 
         if token.type == TYPES.LABEL:
-            self.labels[token.value] = self.currentAddress
-            print(token.value, self.currentAddress)
+            self.assembleLabel(token)
             return
 
         if token.value == 'DB':

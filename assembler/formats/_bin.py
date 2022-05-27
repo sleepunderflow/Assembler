@@ -9,3 +9,6 @@ class BIN(fileFormatClass):
 
     def generateTemplate(self):
         self.org = 0
+
+    def addMiscStructures(self, sections, data):
+        return data
